@@ -107,7 +107,14 @@ async function run() {
 
 
 
+    app.get("/users",async(req,res)=>{
+        
+        const result = await userCollection.find().toArray();
 
+        res.send(
+          result
+        )
+    })
 
 
     app.get("/users/:email/role",async(req,res)=>{
@@ -126,7 +133,8 @@ async function run() {
 
         user.created_at = new Date().toISOString()
         user.last_loggedIn = new Date().toISOString()
-        user.role = 'Donor'
+        user.role = 'donor'
+        user.status = 'active'
 
         const query = {
             email: user.email,
@@ -147,12 +155,6 @@ async function run() {
                 },
             })
         }
-
-
-
-
-
-
 
         const result = await userCollection.insertOne(user);
 
