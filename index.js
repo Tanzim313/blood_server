@@ -56,6 +56,28 @@ async function run() {
     //insertMany
     //insertOne
 
+   app.get('/all-donation-request',async(req,res)=>{
+
+      const {status} = req.query;
+
+      let query = {};
+
+      if(status){
+            query.donationStatus = status;
+      }
+
+      console.log("FILTER_QUERY:", query);
+
+      const result = await modelCollection
+      .find(query)
+      .toArray();
+
+      console.log("all-donation-request:",result)
+
+      res.send(result);
+    })
+
+
 
     app.get('/pending-donations',async(req,res)=>{
       const result = await modelCollection
@@ -89,7 +111,7 @@ async function run() {
             query.donationStatus = status;
         }
 
-        console.log("FILTER QUERY =", query);
+        console.log("FILTER_QUERY:", query);
 
 
         const result = await modelCollection
