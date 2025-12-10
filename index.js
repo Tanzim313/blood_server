@@ -116,6 +116,54 @@ async function run() {
         )
     })
 
+    ///.........
+
+    app.patch("/users/:id/status",async(req,res)=>{
+        const id = req.params.id;
+        const {status} = req.body;
+        
+        console.log("id_received:", id);
+        console.log("status_received:", status);
+
+        const result= await userCollection.updateOne(
+          {_id: new ObjectId(id)},
+          {$set:{status:status}}
+        );
+
+        console.log("RESULT:", result);
+
+
+        res.send(
+          result
+        )
+     })
+
+    app.patch("/users/:id/role",async(req,res)=>{
+        const id = req.params.id;
+        const {role} = req.body;
+        
+        console.log("id_received:", id);
+        console.log("Role_received:", role);
+
+        const result= await userCollection.updateOne(
+          {_id: new ObjectId(id)},
+          {$set:{role:role}}
+        );
+
+        console.log("RESULT:", result);
+
+
+        res.send(
+          result
+        )
+     })
+
+
+
+
+
+    ///
+
 
     app.get("/users/:email/role",async(req,res)=>{
 
