@@ -29,6 +29,7 @@ async function run() {
   const db = client.db('blood_db')
   const modelCollection = db.collection('donar_request')
   const userCollection = db.collection('users')
+  const fundingCollection = db.collection('funding')
 
 
      
@@ -232,6 +233,100 @@ async function run() {
 
         res.send(result);
     })
+
+
+    ///payemnt....
+
+    const stripe = require('stripe')('sk_test_51Sd7MsEtzgLeARX0JIEhw7tboktyOcr2VJFD22C6YsE7VIWZXNnI3WgpoqmQNtsVqMBJiMhHFnit3lgRR8hc3hCW00CG1qfKJc');
+
+
+  app.post('/payment-checkout-session',async(req,res)=>{
+
+      const paymentInfo = req.body;
+      const YOUR_DOMAIN = "http://localhost:5173";
+
+
+      const session = await  stripe.checkout.sessions.create({
+      
+        line_items: [
+      {
+        // Provide the exact Price ID (for example, price_1234) of the product you want to sell
+      price_data:{
+          currency:'usd',
+          product_data:{
+            name:"Donation",
+          },
+          unit_amount: paymentInfo.amount*100,
+      },
+      quantity: 1,
+      },
+    ],
+
+    customer_email: paymentInfo.email, 
+
+    mode: 'payment',
+   
+    metadata:{
+      
+      userId: paymentInfo.userId,
+      userName:paymentInfo.name,
+
+    },
+
+
+    success_url: `${YOUR_DOMAIN}/funding-success?session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${YOUR_DOMAIN}/funding-cancel`,
+
+        
+    })
+
+    res.send({url:session.url});
+
+})
+
+app.post("/funds",async(req,res)=>{
+
+  const {session_id} = req.body;
+ 
+
+  const session = await stripe.checkout.sessions.retrieve(session_id);
+
+  
+  const paymentIntent = await stripe.paymentIntents.retrieve(session.payment_intent);
+
+
+  const funds ={
+  
+    userId:session.metadata.userId,
+    name:session.metadata.userName,
+    email:session.customer_email,
+    amount:paymentIntent.amount/100,
+
+    created_at:new Date(),
+    session_id: session.id,
+
+  };
+
+  const result = await fundingCollection.insertOne(funds);
+
+  res.send(result);
+
+})
+
+
+app.get("/funds-data/:userId",async(req,res)=>{
+
+  const id = req.params.userId;
+
+  result = await fundingCollection.find({userId:id}).toArray();
+
+  res.send(result);
+    
+
+})
+
+
+
 
     
 
