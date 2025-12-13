@@ -4,8 +4,11 @@ const app = express();
 const port = 3000;
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
+require("dotenv").config();
+
 app.use(cors())
 app.use(express.json())
+
 
 
 const uri = "mongodb+srv://blood_db:eIo3jUnEbMiB3I3V@cluster0.7k1gh4c.mongodb.net/?appName=Cluster0";
@@ -237,7 +240,7 @@ async function run() {
 
     ///payemnt....
 
-    const stripe = require('stripe')('sk_test_51Sd7MsEtzgLeARX0JIEhw7tboktyOcr2VJFD22C6YsE7VIWZXNnI3WgpoqmQNtsVqMBJiMhHFnit3lgRR8hc3hCW00CG1qfKJc');
+  const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
 
   app.post('/payment-checkout-session',async(req,res)=>{
