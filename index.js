@@ -84,6 +84,19 @@ async function run() {
       res.send(result);
     })
 
+    app.patch("/donation-status/:id",async(req,res)=>{
+      const {id} = req.params;
+      const {status} = req.body;
+
+      const allowed = ["done","cancel","inprogress","pending"];
+      
+      const result = await modelCollection.updateOne(
+        {_id:new ObjectId(id)},
+        {$set:{donationStatus:status}}
+      );
+      res.send(result);
+    })
+
 
 
     app.get('/pending-donations',async(req,res)=>{
@@ -95,6 +108,22 @@ async function run() {
 
       res.send(result);
     })
+
+    app.get('/pending-donations/:id',async(req,res)=>{
+      
+      const {id} = req.params;
+      
+      const result = await modelCollection
+      .findOne({
+        _id: new ObjectId(id),
+      });
+
+      console.log("pendingOne:",result)
+
+      res.send(result);
+    })
+
+    
 
   
 
@@ -200,6 +229,17 @@ async function run() {
 
     })
 
+
+    app.get("/currentUsers",async(req,res)=>{
+      
+      const {email}=req.query;
+
+      const user = await userCollection.findOne({email});
+
+
+      res.send(user);
+
+    });
 
 
 
