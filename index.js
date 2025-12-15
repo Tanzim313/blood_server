@@ -34,6 +34,8 @@ async function run() {
   const modelCollection = db.collection('donar_request')
   const userCollection = db.collection('users')
   const fundingCollection = db.collection('funding')
+  const districtCollection = db.collection('district')
+  const upazilaCollection = db.collection('upazila')
 
 
      
@@ -133,10 +135,82 @@ async function run() {
     })
 
 
+    app.delete("/donations-request/:id",async(req,res)=>{
+      const id = req.params.id;
+
+      const result = await modelCollection.deleteOne({
+
+            _id:new ObjectId(id),
+
+      });
+      res.send(result);
+    })
+
+    app.get("/donations-request/:id",async(req,res)=>{
+      const id = req.params.id;
+
+      const result = await modelCollection.findOne({
+
+            _id:new ObjectId(id),
+
+      });
+      res.send(result);
+    })
+
+
+    app.patch("/donations-request/edit/:id",async(req,res)=>{
+
+      const id = req.params.id;
+      const updateData = req.body;
+
+
+      const result = await modelCollection.updateOne(
+        {_id:new ObjectId(id)},
+        {$set:updateData}
+      );
+      
+      console.log("Updating Donation:", updateData);
+
+      
+
+
+      res.send(result);
+
+    })
+
+    
+    
+
+    app.patch("/donations-request/status/:id",async(req,res)=>{
+
+      const id = req.params.id;
+      const {donationStatus} = req.body;
+
+      const update = {
+        $set:{donationStatus}
+      };
+
+      const result = await modelCollection.updateOne(
+        {_id:new ObjectId(id)},
+        update
+      );
+
+
+      res.send(result);
+
+    })
+
+
+
+
 
     app.get("/users",async(req,res)=>{
+
+        const {status} = req.query;
+
+        const query = status?{status}:{}
         
-        const result = await userCollection.find().toArray();
+        const result = await userCollection.find(query).toArray();
 
         res.send(
           result
@@ -239,6 +313,42 @@ async function run() {
     })
 
 
+    //......................
+
+    app.get("/profile/:email",async(req,res)=>{
+
+      const email = req.params.email;
+      const result = await userCollection.findOne({email});
+
+        res.send(
+          result
+        )
+    })
+
+    app.patch("/profile", async (req, res) => {
+  const email = req.body.email;
+
+  const updateData = {
+    name: req.body.name,
+    blood: req.body.blood,
+    district: req.body.district,
+    upozila: req.body.upozila,
+    photo: req.body.photo,
+  };
+
+  const result = await userCollection.updateOne(
+    { email },
+    { $set: updateData }
+  );
+
+  res.send(result);
+});
+
+
+
+
+
+
     ///payemnt....
 
 
@@ -315,6 +425,13 @@ app.post("/funds",async(req,res)=>{
 
 })
 
+app.get("/funding",async(req,res)=>{
+
+    result = await fundingCollection.find().toArray();
+    res.send(result);
+
+})
+
 
 app.get("/funds-data/:userId",async(req,res)=>{
 
@@ -324,6 +441,43 @@ app.get("/funds-data/:userId",async(req,res)=>{
 
   res.send(result);
     
+
+})
+
+
+app.get("/district",async(req,res)=>{
+
+  result = await districtCollection.find().toArray();
+
+  res.send(result);
+
+})
+
+
+app.get("/upazila",async(req,res)=>{
+
+  result = await upazilaCollection.find().toArray();
+
+  res.send(result);
+
+})
+
+
+///....search
+
+app.get("/donor-search",async(req,res)=>{
+
+  const {blood,district,upozila} = req.query;
+
+  const query = {};
+
+  if(blood) query.blood = blood;
+  if(district) query.district = district;
+  if(upozila) query.upozila = upozila;
+
+
+  const result = await userCollection.find(query).toArray();
+  res.send(result);
 
 })
 
