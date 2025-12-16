@@ -65,24 +65,35 @@ async function run() {
 
    app.get('/all-donation-request',async(req,res)=>{
 
-      const {status} = req.query;
+      const {status,page=1,limit=5} = req.query;
 
       let query = {};
 
-      if(status){
+      if(status && status !== "all"){
             query.donationStatus = status;
       }
 
+      const skip = (parseInt(page)-1)*parseInt(limit);
+
+
       console.log("FILTER_QUERY:", query);
+
+      const total = await modelCollection.countDocuments(query);
 
       const result = await modelCollection
       .find(query)
+      .skip(skip)
+      .limit(parseInt(limit))
       .toArray();
 
       console.log("all-donation-request:",result)
 
-      res.send(result);
+      res.send({
+        total,
+        result,
+      });
     })
+
 
     app.patch("/donation-status/:id",async(req,res)=>{
       const {id} = req.params;
@@ -96,7 +107,6 @@ async function run() {
       );
       res.send(result);
     })
-
 
 
     app.get('/pending-donations',async(req,res)=>{
