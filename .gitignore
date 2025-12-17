@@ -1,4 +1,4 @@
 .env
 node_modules/
 
-blood-donation-firebase-adminsdk.json
+blood-donation-firebase-adminKey.json
