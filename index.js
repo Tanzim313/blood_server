@@ -6,11 +6,83 @@ const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 require("dotenv").config();
 
+
+const admin = require("firebase-admin");
+
+const serviceAccount = require("./blood-donation-firebase-adminsdk.json");
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+});
+
+
+
 app.use(cors())
 app.use(express.json())
 
-const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+const verifyFbToken = async(req,res,next)=>{
 
+  const authorization = req.headers.authorization;
+      
+  console.log('In the verify middleware',authorization);
+
+  if(!authorization){
+    // allow korebe na
+
+    return res.status(401).send({message:'unauthorized access token'})
+
+  }
+
+  const token = authorization.split(' ')[1];
+
+  if(!token){
+    return res.status(401).send({message:'unauthorized access'})
+  }
+
+
+  //verify token
+
+
+  try{
+
+  const userInfo = await admin.auth().verifyIdToken(token);
+  console.log('after token validation:', userInfo);
+  
+  req.token_email =  userInfo.email;
+
+  next();
+
+  }
+  catch(error){
+
+    console.log('invalid token')
+
+    return res.status(401).send({message:'unauthorized access'})
+
+  }
+
+ 
+
+}
+
+
+
+/** 
+ * 1. after login:server will create a jwt token..
+ * 2. store it in the client side  (localstorage,in memory , cookies)
+ * 3. for asking for sensitive data : send a request with jwt token in the header
+ * 4. server will verify the token.if token is vaild; then will provide the data.
+ * 
+ * 
+ * 
+ * -------------access token refresh token------------------
+ * 
+ * 
+ * 
+
+*/ 
+
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const uri = `mongodb+srv://${process.env.DB_USERNAME}:${process.env.DB_PASSWORD}@cluster0.7k1gh4c.mongodb.net/?appName=Cluster0`;
 
 
@@ -37,11 +109,20 @@ async function run() {
   const districtCollection = db.collection('district')
   const upazilaCollection = db.collection('upazila')
 
+    
+  app.get('/pending-donations',async(req,res)=>{
+      const result = await modelCollection
+      .find({donationStatus:"pending"})
+      .toArray();
 
-     
+      console.log("pending:",result)
+
+      res.send(result);
+    })
+    
     //put method
 
-    app.put("/pending-donations/:id",async(req,res)=>{
+    app.put("/pending-donations/:id",verifyFbToken,async(req,res)=>{
       const id = req.params.id;
       const {donationStatus,donorName,donorEmail}=req.body;
 
@@ -56,6 +137,25 @@ async function run() {
       res.send({message:"Donation Updated Successfully"})
 
     })
+
+
+    app.get('/pending-donations/:id',verifyFbToken,async(req,res)=>{
+    
+      //console.log('headers:',req);
+
+      const {id} = req.params;
+
+
+      const result = await modelCollection
+      .findOne({
+        _id: new ObjectId(id),
+      });
+
+      //console.log("pendingOne:",result)
+
+      res.send(result);
+    })
+
   
     
 
@@ -63,7 +163,7 @@ async function run() {
     //insertMany
     //insertOne
 
-   app.get('/all-donation-request',async(req,res)=>{
+   app.get('/all-donation-request',verifyFbToken,async(req,res)=>{
 
       const {status,page=1,limit=5} = req.query;
 
@@ -95,7 +195,7 @@ async function run() {
     })
 
 
-    app.patch("/donation-status/:id",async(req,res)=>{
+    app.patch("/donation-status/:id",verifyFbToken,async(req,res)=>{
       const {id} = req.params;
       const {status} = req.body;
 
@@ -109,41 +209,21 @@ async function run() {
     })
 
 
-    app.get('/pending-donations',async(req,res)=>{
-      const result = await modelCollection
-      .find({donationStatus:"pending"})
-      .toArray();
-
-      console.log("pending:",result)
-
-      res.send(result);
-    })
-
-    app.get('/pending-donations/:id',async(req,res)=>{
-      
-      const {id} = req.params;
-      
-      const result = await modelCollection
-      .findOne({
-        _id: new ObjectId(id),
-      });
-
-      console.log("pendingOne:",result)
-
-      res.send(result);
-    })
-
     
 
-  
 
-    app.post("/donations-request",async(req,res)=>{
+
+
+
+
+    app.post("/donations-request",verifyFbToken,async(req,res)=>{
         const result = await modelCollection.insertOne(req.body);
         res.send(result);
     });
 
 
-    app.get('/donations-request',async(req,res)=>{
+
+    app.get('/donations-request',verifyFbToken,async(req,res)=>{
 
         const {email,status} = req.query;
 
@@ -174,7 +254,7 @@ async function run() {
     })
 
 
-    app.delete("/donations-request/:id",async(req,res)=>{
+    app.delete("/donations-request/:id",verifyFbToken,async(req,res)=>{
       const id = req.params.id;
 
       const result = await modelCollection.deleteOne({
@@ -185,7 +265,8 @@ async function run() {
       res.send(result);
     })
 
-    app.get("/donations-request/:id",async(req,res)=>{
+
+    app.get("/donations-request/:id",verifyFbToken,async(req,res)=>{
       const id = req.params.id;
 
       const result = await modelCollection.findOne({
@@ -197,7 +278,7 @@ async function run() {
     })
 
 
-    app.patch("/donations-request/edit/:id",async(req,res)=>{
+    app.patch("/donations-request/edit/:id",verifyFbToken,async(req,res)=>{
 
       const id = req.params.id;
       const updateData = req.body;
@@ -220,7 +301,7 @@ async function run() {
     
     
 
-    app.patch("/donations-request/status/:id",async(req,res)=>{
+    app.patch("/donations-request/status/:id",verifyFbToken,async(req,res)=>{
 
       const id = req.params.id;
       const {donationStatus} = req.body;
@@ -240,7 +321,9 @@ async function run() {
     })
 
 
-    app.get("/currentUsers",async(req,res)=>{
+    ///create-customer...
+
+    app.get("/currentUsers",verifyFbToken,async(req,res)=>{
       
       const {email}=req.query;
 
@@ -254,7 +337,7 @@ async function run() {
 
 
 
-    app.get("/users",async(req,res)=>{
+    app.get("/users",verifyFbToken,async(req,res)=>{
 
         const {status} = req.query;
 
@@ -269,7 +352,7 @@ async function run() {
 
     ///.........
 
-    app.patch("/users/:id/status",async(req,res)=>{
+    app.patch("/users/:id/status",verifyFbToken,async(req,res)=>{
         const id = req.params.id;
         const {status} = req.body;
         
@@ -289,9 +372,11 @@ async function run() {
         )
      })
 
-    app.patch("/users/:id/role",async(req,res)=>{
+    app.patch("/users/:id/role",verifyFbToken,async(req,res)=>{
         const id = req.params.id;
         const {role} = req.body;
+
+
         
         console.log("id_received:", id);
         console.log("Role_received:", role);
@@ -327,7 +412,8 @@ async function run() {
     });
 
 
-    app.post("/users",async(req,res)=>{
+
+    app.post("/users",verifyFbToken,async(req,res)=>{
         const user = req.body;
 
         user.created_at = new Date().toISOString()
@@ -365,7 +451,7 @@ async function run() {
 
     //......................
 
-    app.get("/profile/:email",async(req,res)=>{
+    app.get("/profile/:email",verifyFbToken ,async(req,res)=>{
 
       const email = req.params.email;
       const result = await userCollection.findOne({email});
@@ -375,7 +461,8 @@ async function run() {
         )
     })
 
-    app.patch("/profile", async (req, res) => {
+
+    app.patch("/profile",verifyFbToken, async (req, res) => {
   const email = req.body.email;
 
   const updateData = {
@@ -402,7 +489,7 @@ async function run() {
     ///payemnt....
 
 
-  app.post('/payment-checkout-session',async(req,res)=>{
+  app.post('/payment-checkout-session',verifyFbToken,async(req,res)=>{
 
       const paymentInfo = req.body;
       const YOUR_DOMAIN = "http://localhost:5173";
@@ -446,7 +533,7 @@ async function run() {
 
 })
 
-app.post("/funds",async(req,res)=>{
+app.post("/funds",verifyFbToken,async(req,res)=>{
 
   const {session_id} = req.body;
  
@@ -475,7 +562,7 @@ app.post("/funds",async(req,res)=>{
 
 })
 
-app.get("/funding",async(req,res)=>{
+app.get("/funding",verifyFbToken,async(req,res)=>{
 
     result = await fundingCollection.find().toArray();
     res.send(result);
@@ -483,7 +570,7 @@ app.get("/funding",async(req,res)=>{
 })
 
 
-app.get("/funds-data/:userId",async(req,res)=>{
+app.get("/funds-data/:userId",verifyFbToken,async(req,res)=>{
 
   const id = req.params.userId;
 
