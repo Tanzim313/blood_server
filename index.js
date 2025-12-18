@@ -109,6 +109,27 @@ async function run() {
   const districtCollection = db.collection('district')
   const upazilaCollection = db.collection('upazila')
 
+
+  //middle more with database access............
+  // must use after verifyToken..........
+
+
+  const verifyAdmin =async(req,res,next)=>{
+
+    const email = req.token_email;
+    const query = {email};
+    const user = await userCollection.findOne(query);
+
+    if(!user || user.role !== 'admin'){
+      return res.status(403).send({message:'forbidden access'});
+    }
+
+
+    console.log("verifyadmin email:",email);
+
+    next()
+  }
+
     
   app.get('/pending-donations',async(req,res)=>{
       const result = await modelCollection
@@ -225,7 +246,9 @@ async function run() {
 
     app.get('/donations-request',verifyFbToken,async(req,res)=>{
 
-        const {email,status} = req.query;
+        
+
+        const {email,status,page=1,limit=5} = req.query;
 
         let query = {};
 
@@ -237,7 +260,12 @@ async function run() {
             query.donationStatus = status;
         }
 
+        const skip = (parseInt(page)-1)*parseInt(limit);
+
         console.log("FILTER_QUERY:", query);
+
+
+        const total = await modelCollection.countDocuments(query);
 
 
         const result = await modelCollection
@@ -246,12 +274,18 @@ async function run() {
             donationDate:-1,
             donationTime:-1
         })
+        .skip(skip)
+        .limit(parseInt(limit))
         .toArray();
         
         console.log(result);
 
-        res.send(result);
+        res.send({
+          result,
+          total,
+        });
     })
+
 
 
     app.delete("/donations-request/:id",verifyFbToken,async(req,res)=>{
@@ -372,7 +406,7 @@ async function run() {
         )
      })
 
-    app.patch("/users/:id/role",verifyFbToken,async(req,res)=>{
+    app.patch("/users/:id/role",verifyFbToken,verifyAdmin,async(req,res)=>{
         const id = req.params.id;
         const {role} = req.body;
 
@@ -413,7 +447,7 @@ async function run() {
 
 
 
-    app.post("/users",verifyFbToken,async(req,res)=>{
+    app.post("/users",async(req,res)=>{
         const user = req.body;
 
         user.created_at = new Date().toISOString()
